@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/jspc/loadtest"
@@ -21,7 +22,10 @@ func main() {
 	go func() {
 		for o := range c {
 			for _, collector := range collectors {
-				go collector.Push(o)
+				err = collector.Push(o)
+				if err != nil {
+					log.Print(err)
+				}
 			}
 		}
 	}()
