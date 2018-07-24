@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"net/http"
 
@@ -12,8 +13,14 @@ type OutputWriteWrapper struct {
 	database string
 }
 
+var (
+	influx = flag.String("influx", "http://localhost:8086", "influx host")
+)
+
 func main() {
-	idb, err := NewInfluxdbCollector("http://localhost:8086", "magnum")
+	flag.Parse()
+
+	idb, err := NewInfluxdbCollector(*influx, "magnum")
 	if err != nil {
 		panic(err)
 	}
