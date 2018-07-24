@@ -9,8 +9,6 @@ import (
 	"net/url"
 	"strings"
 	"text/template"
-
-	"github.com/jspc/loadtest"
 )
 
 type httpClient interface {
@@ -22,8 +20,9 @@ type InfluxdbCollector struct {
 	Host     string
 	Database string
 
-	client httpClient
-	funcs  template.FuncMap
+	client  httpClient
+	funcs   template.FuncMap
+	indices map[string]byte
 }
 
 func NewInfluxdbCollector(host, db string) (c InfluxdbCollector, err error) {
@@ -32,35 +31,48 @@ func NewInfluxdbCollector(host, db string) (c InfluxdbCollector, err error) {
 		Database: db,
 		client:   new(http.Client),
 		funcs:    make(template.FuncMap),
+		indices:  make(map[string]byte),
 	}
 
 	c.funcs["unix"] = unix
 	c.funcs["nanoseconds"] = nanoseconds
 
-	err = c.SetIndex()
+	return
+}
+
+func (c *InfluxdbCollector) CreateIndex(database string) (err error) {
+	t := "CREATE DATABASE {{.}}"
+
+	q, err := c.tmpl(t, database)
+	if err != nil {
+		return
+	}
+
+	err = c.postQuery("query", q)
+	if err != nil {
+		return
+	}
+
+	c.indices[database] = '1'
 
 	return
 }
 
-func (c InfluxdbCollector) SetIndex() (err error) {
-	t := "CREATE DATABASE {{.Database}}"
-
-	q, err := c.tmpl(t, c)
-	if err != nil {
-		return
-	}
-
-	return c.postQuery("query", q)
-}
-
-func (c InfluxdbCollector) Push(o loadtest.Output) (err error) {
+func (c InfluxdbCollector) Push(o OutputWriteWrapper) (err error) {
 	t := "request,url={{.URL}},method={{.Method}},status={{.Status}},error={{if .Error}}true{{else}}false{{end}} size={{.Size}},duration={{nanoseconds .Duration}} {{unix .Timestamp}}"
-	q, err := c.tmpl(t, o)
+	q, err := c.tmpl(t, o.output)
 	if err != nil {
 		return
 	}
 
-	p := fmt.Sprintf("write?db=%s", c.Database)
+	if _, ok := c.indices[o.database]; !ok {
+		err = c.CreateIndex(o.database)
+		if err != nil {
+			return
+		}
+	}
+
+	p := fmt.Sprintf("write?db=%s", o.database)
 
 	return c.post(p, q)
 }
@@ -121,9 +133,23 @@ func (c InfluxdbCollector) postQuery(path, query string) (err error) {
 		return
 	}
 
-	_, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 && resp.StatusCode != 204 {
+		if resp.Request == nil {
+			err = fmt.Errorf("(INCOMPLETE LOG) %s - %s", resp.Status, string(body))
+		} else {
+			err = fmt.Errorf("%s on %s returned %s - %s",
+				resp.Request.Method,
+				resp.Request.URL.String(),
+				resp.Status,
+				string(body),
+			)
+		}
 	}
 
 	return

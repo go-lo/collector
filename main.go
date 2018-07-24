@@ -7,6 +7,11 @@ import (
 	"github.com/jspc/loadtest"
 )
 
+type OutputWriteWrapper struct {
+	output   loadtest.Output
+	database string
+}
+
 func main() {
 	idb, err := NewInfluxdbCollector("http://localhost:8086", "magnum")
 	if err != nil {
@@ -17,7 +22,7 @@ func main() {
 		idb,
 	}
 
-	c := make(chan loadtest.Output)
+	c := make(chan OutputWriteWrapper)
 
 	go func() {
 		for o := range c {

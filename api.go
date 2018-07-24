@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/jspc/loadtest"
 )
 
 type API struct {
-	OutputChan chan loadtest.Output
+	OutputChan chan OutputWriteWrapper
 }
 
 func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/push":
+	switch {
+	case strings.HasPrefix(r.URL.Path, "/push/"):
 		a.Push(w, r)
 
 	default:
@@ -39,6 +40,8 @@ func (a API) Push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	index := strings.TrimPrefix(r.URL.Path, "/push/")
+
 	o := new(loadtest.Output)
 
 	err = json.Unmarshal(body, o)
@@ -48,5 +51,8 @@ func (a API) Push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.OutputChan <- *o
+	a.OutputChan <- OutputWriteWrapper{
+		output:   *o,
+		database: index,
+	}
 }
