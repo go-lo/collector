@@ -29,9 +29,10 @@ func NewInfluxdbCollector(host, db string) (c InfluxdbCollector, err error) {
 	c = InfluxdbCollector{
 		Host:     host,
 		Database: db,
-		client:   new(http.Client),
-		funcs:    make(template.FuncMap),
-		indices:  make(map[string]byte),
+
+		client:  new(http.Client),
+		funcs:   make(template.FuncMap),
+		indices: make(map[string]byte),
 	}
 
 	c.funcs["unix"] = unix
@@ -58,7 +59,7 @@ func (c *InfluxdbCollector) CreateIndex(database string) (err error) {
 	return
 }
 
-func (c InfluxdbCollector) Push(o OutputWriteWrapper) (err error) {
+func (c InfluxdbCollector) Push(o OutputMapper) (err error) {
 	t := "request,url={{.URL}},method={{.Method}},status={{.Status}},error={{if .Error}}true{{else}}false{{end}} size={{.Size}},duration={{nanoseconds .Duration}} {{unix .Timestamp}}"
 	q, err := c.tmpl(t, o.output)
 	if err != nil {

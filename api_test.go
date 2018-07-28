@@ -22,7 +22,7 @@ func TestServeHTTP(t *testing.T) {
 		{"bad json", "POST", "/push/blah", "}}", 400},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			a := API{make(chan OutputWriteWrapper)}
+			a := API{make(chan OutputMapper)}
 			defer close(a.OutputChan)
 
 			go func() {

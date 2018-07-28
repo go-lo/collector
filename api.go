@@ -11,7 +11,7 @@ import (
 )
 
 type API struct {
-	OutputChan chan OutputWriteWrapper
+	OutputChan chan OutputMapper
 }
 
 func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func (a API) Push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.OutputChan <- OutputWriteWrapper{
+	a.OutputChan <- OutputMapper{
 		output:   *o,
 		database: index,
 	}

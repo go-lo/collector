@@ -4,5 +4,5 @@ package main
 // what takes a loadtest.Output and writes it to some storage
 // somewhere.
 type Collector interface {
-	Push(OutputWriteWrapper) error
+	Push(OutputMapper) error
 }

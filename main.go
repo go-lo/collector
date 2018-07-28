@@ -8,7 +8,7 @@ import (
 	"github.com/jspc/loadtest"
 )
 
-type OutputWriteWrapper struct {
+type OutputMapper struct {
 	output   loadtest.Output
 	database string
 }
@@ -29,7 +29,7 @@ func main() {
 		idb,
 	}
 
-	c := make(chan OutputWriteWrapper)
+	c := make(chan OutputMapper)
 
 	go func() {
 		for o := range c {
