@@ -25,6 +25,13 @@ func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a API) Push(w http.ResponseWriter, r *http.Request) {
+	index := strings.TrimPrefix(r.URL.Path, "/push/")
+	if index == "" {
+		http.Error(w, fmt.Sprintf("%s not found", r.URL.Path), http.StatusNotFound)
+
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 
@@ -39,8 +46,6 @@ func (a API) Push(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-
-	index := strings.TrimPrefix(r.URL.Path, "/push/")
 
 	o := new(loadtest.Output)
 
