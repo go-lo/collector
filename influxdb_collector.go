@@ -60,6 +60,12 @@ func (c *InfluxdbCollector) CreateIndex(database string) (err error) {
 }
 
 func (c InfluxdbCollector) Push(o OutputMapper) (err error) {
+	if o.output.Timestamp.UnixNano() == -6795364578871345152 {
+		// We've ingested some really invalid data that doesn't have even
+		// a timestamp
+		return fmt.Errorf("Missing timestamp")
+	}
+
 	t := "request,url={{.URL}},method={{.Method}},status={{.Status}},error={{if .Error}}true{{else}}false{{end}} size={{.Size}},duration={{nanoseconds .Duration}} {{unix .Timestamp}}"
 	q, err := c.tmpl(t, o.output)
 	if err != nil {
