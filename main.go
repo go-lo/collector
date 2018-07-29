@@ -8,6 +8,8 @@ import (
 	"github.com/go-lo/go-lo"
 )
 
+// OutputMapper includes a golo.Output and additional
+// collector metadata
 type OutputMapper struct {
 	output   golo.Output
 	database string

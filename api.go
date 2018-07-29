@@ -10,6 +10,8 @@ import (
 	"github.com/go-lo/go-lo"
 )
 
+// API provides an http interface into the collector;
+// specifically pushing metrics through
 type API struct {
 	OutputChan chan OutputMapper
 }
@@ -24,6 +26,9 @@ func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Push handles 'POST example.com/push/$DB' requests- it receives
+// them, determines the database (from the path) and then pushes
+// into a channel for different collectors to consume and push
 func (a API) Push(w http.ResponseWriter, r *http.Request) {
 	index := strings.TrimPrefix(r.URL.Path, "/push/")
 	if index == "" {
