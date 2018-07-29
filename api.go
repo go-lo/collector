@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 type API struct {
@@ -47,7 +47,7 @@ func (a API) Push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o := new(loadtest.Output)
+	o := new(golo.Output)
 
 	err = json.Unmarshal(body, o)
 	if err != nil {

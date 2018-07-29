@@ -5,11 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 type OutputMapper struct {
-	output   loadtest.Output
+	output   golo.Output
 	database string
 }
 

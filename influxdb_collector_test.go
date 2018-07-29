@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jspc/loadtest"
+	"github.com/go-lo/go-lo"
 )
 
 type dummyInfluxClient struct {
@@ -104,7 +104,7 @@ func TestInflux_CreateIndex(t *testing.T) {
 func TestInflux_Push(t *testing.T) {
 	n := time.Now()
 
-	o := loadtest.Output{
+	o := golo.Output{
 		URL:       "example.com",
 		Method:    "DELETE",
 		Status:    http.StatusTeapot,
@@ -127,7 +127,7 @@ func TestInflux_Push(t *testing.T) {
 		{"well formed output, not first", OutputMapper{o, "a-db"}, &dummyInfluxClient{}, map[string]byte{"a-db": '1'}, oO, false},
 		{"bad response", OutputMapper{o, "a-db"}, &dummyInfluxClient{status: 500}, map[string]byte{"a-db": '1'}, oO, true},
 		{"network error", OutputMapper{o, "a-db"}, &dummyInfluxClient{err: true}, map[string]byte{"a-db": '1'}, oO, true},
-		{"missing/ unfinished", OutputMapper{loadtest.Output{}, "a-db"}, &dummyInfluxClient{}, map[string]byte{"a-db": '1'}, "", true},
+		{"missing/ unfinished", OutputMapper{golo.Output{}, "a-db"}, &dummyInfluxClient{}, map[string]byte{"a-db": '1'}, "", true},
 
 		// See above for explanation, such that it is
 		{"weirdness", OutputMapper{o, "a-db"}, &dummyInfluxClient{status: 500, dropReq: true}, map[string]byte{"a-db": '1'}, oO, true},
