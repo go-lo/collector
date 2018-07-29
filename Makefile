@@ -1,14 +1,14 @@
 default: clean test build docker
 
 .PHONY: build
-build: clean loadtest-collector
+build: clean collector
 
-loadtest-collector:
+collector:
 	CGO_ENABLED=0 GOOS=linux go build
 
 .PHONY: clean
 clean:
-	-rm loadtest-collector
+	-rm collector
 
 .PHONY: test
 test: deps
@@ -20,5 +20,5 @@ deps:
 
 .PHONY: docker
 docker:
-	docker build -t jspc/loadtest-collector .
-	docker push jspc/loadtest-collector
+	docker build -t goload/collector .
+	docker push goload/collector

@@ -16,6 +16,8 @@ type httpClient interface {
 	PostForm(string, url.Values) (*http.Response, error)
 }
 
+// InfluxdbCollector is a collector which pushes into the popular timeseries
+// database "Influx"
 type InfluxdbCollector struct {
 	Host     string
 	Database string
@@ -25,6 +27,8 @@ type InfluxdbCollector struct {
 	indices map[string]byte
 }
 
+// NewInfluxdbCollector will bootstrap an InfluxdbCollector
+// and configuree some `text/template' functions
 func NewInfluxdbCollector(host, db string) (c InfluxdbCollector, err error) {
 	c = InfluxdbCollector{
 		Host:     host,
@@ -41,6 +45,10 @@ func NewInfluxdbCollector(host, db string) (c InfluxdbCollector, err error) {
 	return
 }
 
+// CreateIndex takes a database name, templates it into an influx query,
+// and posts this to influx. It then stores the index to ensure it's not
+// created over and over. While this is idempotent in influx, it's still
+// inefficient
 func (c *InfluxdbCollector) CreateIndex(database string) (err error) {
 	t := "CREATE DATABASE {{.}}"
 
@@ -59,6 +67,9 @@ func (c *InfluxdbCollector) CreateIndex(database string) (err error) {
 	return
 }
 
+// Push takes output and pushes it into an influx database. If this database
+// is not known to exist (so: this instance of the collector doesn't know it)
+// then it will create it
 func (c InfluxdbCollector) Push(o OutputMapper) (err error) {
 	if o.output.Timestamp.UnixNano() == -6795364578871345152 {
 		// We've ingested some really invalid data that doesn't have even
