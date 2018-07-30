@@ -36,10 +36,12 @@ func main() {
 	go func() {
 		for o := range c {
 			for _, collector := range collectors {
-				err = collector.Push(o)
-				if err != nil {
-					log.Print(err)
-				}
+				go func() {
+					err = collector.Push(o)
+					if err != nil {
+						log.Print(err)
+					}
+				}()
 			}
 		}
 	}()
