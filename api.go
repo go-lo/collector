@@ -43,6 +43,12 @@ func (a API) Push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Body == nil {
+		http.Error(w, "no body found", http.StatusBadRequest)
+
+		return
+	}
+
 	defer r.Body.Close()
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -52,17 +58,19 @@ func (a API) Push(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	o := new(golo.Output)
+	ol := new([]golo.Output)
 
-	err = json.Unmarshal(body, o)
+	err = json.Unmarshal(body, ol)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 
 		return
 	}
 
-	a.OutputChan <- OutputMapper{
-		output:   *o,
-		database: index,
+	for _, o := range *ol {
+		a.OutputChan <- OutputMapper{
+			output:   o,
+			database: index,
+		}
 	}
 }
