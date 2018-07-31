@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"text/template"
 )
 
@@ -25,18 +26,26 @@ type InfluxdbCollector struct {
 	client  httpClient
 	funcs   template.FuncMap
 	indices map[string]byte
+
+	queue      []string
+	queueLen   int
+	queueMutex *sync.Mutex
 }
 
 // NewInfluxdbCollector will bootstrap an InfluxdbCollector
 // and configuree some `text/template' functions
-func NewInfluxdbCollector(host, db string) (c InfluxdbCollector, err error) {
-	c = InfluxdbCollector{
+func NewInfluxdbCollector(host, db string) (c *InfluxdbCollector, err error) {
+	c = &InfluxdbCollector{
 		Host:     host,
 		Database: db,
 
 		client:  new(http.Client),
 		funcs:   make(template.FuncMap),
 		indices: make(map[string]byte),
+
+		queue:      make([]string, 0),
+		queueLen:   2048,
+		queueMutex: new(sync.Mutex),
 	}
 
 	c.funcs["unix"] = unix
@@ -70,7 +79,7 @@ func (c *InfluxdbCollector) CreateIndex(database string) (err error) {
 // Push takes output and pushes it into an influx database. If this database
 // is not known to exist (so: this instance of the collector doesn't know it)
 // then it will create it
-func (c InfluxdbCollector) Push(o OutputMapper) (err error) {
+func (c *InfluxdbCollector) Push(o OutputMapper) (err error) {
 	if o.output.Timestamp.UnixNano() == -6795364578871345152 {
 		// We've ingested some really invalid data that doesn't have even
 		// a timestamp
@@ -83,16 +92,29 @@ func (c InfluxdbCollector) Push(o OutputMapper) (err error) {
 		return
 	}
 
-	if _, ok := c.indices[o.database]; !ok {
-		err = c.CreateIndex(o.database)
+	c.queueMutex.Lock()
+	defer c.queueMutex.Unlock()
+	c.queue = append(c.queue, q)
+
+	if len(c.queue) >= c.queueLen {
+		if _, ok := c.indices[o.database]; !ok {
+			err = c.CreateIndex(o.database)
+			if err != nil {
+				return
+			}
+		}
+
+		p := fmt.Sprintf("write?db=%s", o.database)
+
+		err = c.post(p, strings.Join(c.queue, "\n"))
 		if err != nil {
 			return
 		}
+
+		c.queue = nil
 	}
 
-	p := fmt.Sprintf("write?db=%s", o.database)
-
-	return c.post(p, q)
+	return
 }
 
 func (c InfluxdbCollector) tmpl(s string, i interface{}) (out string, err error) {

@@ -120,22 +120,24 @@ func TestInflux_Push(t *testing.T) {
 		ow          OutputMapper
 		client      httpClient
 		indices     map[string]byte
+		queueLen    int
 		expect      string
 		expectError bool
 	}{
-		{"well formed output, first push", OutputMapper{o, "a-db"}, &dummyInfluxClient{}, make(map[string]byte), oO, false},
-		{"well formed output, not first", OutputMapper{o, "a-db"}, &dummyInfluxClient{}, map[string]byte{"a-db": '1'}, oO, false},
-		{"bad response", OutputMapper{o, "a-db"}, &dummyInfluxClient{status: 500}, map[string]byte{"a-db": '1'}, oO, true},
-		{"network error", OutputMapper{o, "a-db"}, &dummyInfluxClient{err: true}, map[string]byte{"a-db": '1'}, oO, true},
-		{"missing/ unfinished", OutputMapper{golo.Output{}, "a-db"}, &dummyInfluxClient{}, map[string]byte{"a-db": '1'}, "", true},
+		{"well formed output, first push", OutputMapper{o, "a-db"}, &dummyInfluxClient{}, make(map[string]byte), 1, oO, false},
+		{"well formed output, not first", OutputMapper{o, "a-db"}, &dummyInfluxClient{}, map[string]byte{"a-db": '1'}, 1, oO, false},
+		{"bad response", OutputMapper{o, "a-db"}, &dummyInfluxClient{status: 500}, map[string]byte{"a-db": '1'}, 1, oO, true},
+		{"network error", OutputMapper{o, "a-db"}, &dummyInfluxClient{err: true}, map[string]byte{"a-db": '1'}, 1, oO, true},
+		{"missing/ unfinished", OutputMapper{golo.Output{}, "a-db"}, &dummyInfluxClient{}, map[string]byte{"a-db": '1'}, 1, "", true},
 
 		// See above for explanation, such that it is
-		{"weirdness", OutputMapper{o, "a-db"}, &dummyInfluxClient{status: 500, dropReq: true}, map[string]byte{"a-db": '1'}, oO, true},
+		{"weirdness", OutputMapper{o, "a-db"}, &dummyInfluxClient{status: 500, dropReq: true}, map[string]byte{"a-db": '1'}, 1, oO, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			i, _ := NewInfluxdbCollector("example.com", "test")
 			i.client = test.client
 			i.indices = test.indices
+			i.queueLen = test.queueLen
 
 			err := i.Push(test.ow)
 			if test.expectError && err == nil {
@@ -152,5 +154,32 @@ func TestInflux_Push(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestInfluxPush_LargeQueue(t *testing.T) {
+	i, _ := NewInfluxdbCollector("example.com", "test")
+	i.client = &dummyInfluxClient{}
+	i.queueLen = 10
+
+	o := golo.Output{
+		URL:       "www1.example.com",
+		Method:    "PATCH",
+		Status:    http.StatusTeapot,
+		Error:     nil,
+		Size:      420 * 69,
+		Duration:  1000000,
+		Timestamp: time.Now(),
+	}
+
+	i.Push(OutputMapper{o, "a-db"})
+
+	lb := i.client.(*dummyInfluxClient).lastBody
+	if len(lb) != 0 {
+		t.Errorf("Unexpected write to influx: %s", string(lb))
+	}
+
+	if len(i.queue) != 1 {
+		t.Errorf("queue has %d items, expect 1", len(i.queue))
 	}
 }
