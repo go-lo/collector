@@ -2,9 +2,10 @@ package main
 
 import (
 	"bytes"
-	"net/http/httptest"
 	"net/url"
 	"testing"
+
+	"github.com/valyala/fasthttp"
 )
 
 func TestServeHTTP(t *testing.T) {
@@ -36,17 +37,18 @@ func TestServeHTTP(t *testing.T) {
 			u, _ := url.Parse("http://example.com")
 			u.Path = test.path
 
-			r := httptest.NewRequest(test.method, u.String(), bytes.NewBufferString(test.body))
-			w := httptest.NewRecorder()
+			r := new(fasthttp.Request)
+			r.Header.SetMethod(test.method)
+			r.SetRequestURI(u.String())
+			r.SetBodyStream(bytes.NewBufferString(test.body), len([]byte(test.body)))
 
-			if test.destroyBody {
-				r.Body = nil
-			}
+			ctx := &fasthttp.RequestCtx{Request: *r}
 
-			a.ServeHTTP(w, r)
+			a.Route(ctx)
 
-			if test.expectStatus != w.Code {
-				t.Errorf("expected %d, received %d", test.expectStatus, w.Code)
+			status := ctx.Response.Header.StatusCode()
+			if test.expectStatus != status {
+				t.Errorf("expected %d, received %d", test.expectStatus, status)
 			}
 		})
 	}
