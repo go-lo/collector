@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"log"
-	"net/http"
 
 	"github.com/go-lo/go-lo"
+	"github.com/valyala/fasthttp"
 )
 
 // OutputMapper includes a golo.Output and additional
@@ -50,5 +50,5 @@ func main() {
 		OutputChan: c,
 	}
 
-	panic(http.ListenAndServe(":8082", api))
+	panic(fasthttp.ListenAndServe(":8082", api.Route))
 }

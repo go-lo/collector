@@ -3,11 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strings"
 
 	"github.com/go-lo/go-lo"
+	"github.com/valyala/fasthttp"
 )
 
 // API provides an http interface into the collector;
@@ -16,53 +16,45 @@ type API struct {
 	OutputChan chan OutputMapper
 }
 
-func (a API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (a API) Route(ctx *fasthttp.RequestCtx) {
 	switch {
-	case strings.HasPrefix(r.URL.Path, "/push/"):
-		a.Push(w, r)
+	case strings.HasPrefix(string(ctx.Path()), "/push/"):
+		a.Push(ctx)
 
 	default:
-		http.Error(w, fmt.Sprintf("%s not found", r.URL.Path), http.StatusNotFound)
+		ctx.Error(fmt.Sprintf("%s not found", string(ctx.Path())), fasthttp.StatusNotFound)
 	}
 }
 
 // Push handles 'POST example.com/push/$DB' requests- it receives
 // them, determines the database (from the path) and then pushes
 // into a channel for different collectors to consume and push
-func (a API) Push(w http.ResponseWriter, r *http.Request) {
-	index := strings.TrimPrefix(r.URL.Path, "/push/")
+func (a API) Push(ctx *fasthttp.RequestCtx) {
+	index := strings.TrimPrefix(string(ctx.Path()), "/push/")
 	if index == "" {
-		http.Error(w, fmt.Sprintf("%s not found", r.URL.Path), http.StatusNotFound)
+		ctx.Error(fmt.Sprintf("%s not found", string(ctx.Path())), fasthttp.StatusNotFound)
 
 		return
 	}
 
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	if string(ctx.Method()) != http.MethodPost {
+		ctx.Error("method not allowed", fasthttp.StatusMethodNotAllowed)
 
 		return
 	}
 
-	if r.Body == nil {
-		http.Error(w, "no body found", http.StatusBadRequest)
-
-		return
-	}
-
-	defer r.Body.Close()
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	body := ctx.Request.Body()
+	if len(body) == 0 {
+		ctx.Error("no body found", fasthttp.StatusBadRequest)
 
 		return
 	}
 
 	ol := new([]golo.Output)
 
-	err = json.Unmarshal(body, ol)
+	err := json.Unmarshal(body, ol)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		ctx.Error(err.Error(), fasthttp.StatusBadRequest)
 
 		return
 	}
